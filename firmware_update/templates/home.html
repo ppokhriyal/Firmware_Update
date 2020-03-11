@@ -1,0 +1,11 @@
+{% extends 'layout.html' %}
+{% block content %}
+	<h4 class="pt-1"> Patch History
+	<a href="{{url_for('build_new_patch')}}" class="btn btn-success btn-sm float-right">Build New Patch</a></h4>
+	<div class="border-top pt-2"></div>
+	{% if patch_count == 0 %}
+		<p class="h4 text-info">No Patch History Found !!</p>
+	{% else %}
+	
+	{% endif %}
+{% endblock content %}
