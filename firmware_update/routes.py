@@ -230,7 +230,7 @@ else
 fi
 
 #Check for Min/Max value
-/usr/verixo-bin/verify-patch.sh {min_image_value} {max_image_value}
+/usr/verixo-bin/verify-patch.sh {min_value} {max_value}
 status=$?
 if [ $status -ne 0 ]
 then
@@ -268,6 +268,17 @@ fi
 exit 0
 
 """)
+		f.close()
+		#Start writing Install script
+		install_script = form.install_script.data
+		install_script_list = []
+
+		if len(install_script) != 0:
+			install_script_list = install_script
+			f = open(patchpath+str(patchid)+'/root/install',"a+")
+			for i in install_script_list:
+				f.write('#!/bin/bash\n'+i)
+			f.close()		
 	return render_template('build_new_patch.html',title='Build New Patch',form=form,patchid=patchid)
 #Logout
 @app.route('/logout')
