@@ -17,7 +17,7 @@ import tarfile
 
 
 #Home Page
-@app.route('/')
+@app.route('/home')
 @login_required
 def home():
 	#Check the Length of patchinfo db
@@ -26,7 +26,7 @@ def home():
 	return render_template('home.html',title="Home",patch_count=patch_count)
 
 #Login Page
-@app.route('/login',methods=['GET','POST'])
+@app.route('/',methods=['GET','POST'])
 def login():
 	form = LoginForm()
 	if form.validate_on_submit():
@@ -182,9 +182,9 @@ def build_new_patch():
 				else :
 					Path(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg/'+'root:'+prefix[1]).touch()
 
+		
 		#Findminmax Script
 		#Check for OS-Arch,Minimum-Maximum build,Check Update Build and Package Size
-
 		#OS-Arch
 		os_arch = form.os_type.data
 
@@ -274,11 +274,41 @@ exit 0
 		install_script_list = []
 
 		if len(install_script) != 0:
-			install_script_list = install_script
+			install_script_list = install_script.split(' ')
 			f = open(patchpath+str(patchid)+'/root/install',"a+")
-			for i in install_script_list:
-				f.write('#!/bin/bash\n'+i)
-			f.close()		
+			f.write("#!/bin/bash\n")
+			for i in " ".join(install_script_list):
+				f.write(i)
+			f.close()
+
+			#Remove ^M from install script
+			subprocess.call(["sed -i -e 's/\r//g' /var/www/html/Firmware-Updates/"+str(patchid)+"/root/install"],shell=True)
+
+		#Pre-Check Patch
+		#Check if add-pkg or delete-pkg folders contains empty
+		if os.path.isfile(patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg/empty'):
+			shutil.rmtree(patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg')
+
+		if os.path.isfile(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg/empty'):
+			shutil.rmtree(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg-pkg')
+
+		#Chmod
+		subprocess.call(["chmod -R 755 /var/www/html/Firmware-Updates/"+str(patchid)],shell=True)
+
+		#Build Final Patch Tar
+		patchname = form.patch_name.data.replace(' ','_')+'_'+str(patchid)+'.tar.bz2'
+		tar_file_path = patchpath+str(patchid)+'/'+patchname
+		tar = tarfile.open(tar_file_path,mode='w:bz2')
+		os.chdir(patchpath+str(patchid))
+		tar.add(".")
+		tar.close()
+
+		#Damage Patch
+		cmd = "damage corrupt /var/www/html/Firmware-Updates/"+str(patchid)+'/'+patchname+" 1"
+		proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+		o,e = proc.communicate()
+
+		return redirect(url_for('home'))
 	return render_template('build_new_patch.html',title='Build New Patch',form=form,patchid=patchid)
 #Logout
 @app.route('/logout')

@@ -40,7 +40,8 @@
   <!--Minumum Maximum Build-->
   <p class="pt-3">Minimum and Maximum Build Version
   	<br>
-  	<small>Please mention Minimum and Maximum Build version.This makes patch to work between the mentioned Build versions.<br>
+  	<small>Please check the above checkbox for making the Min-Max script into effect.<br>
+    Please mention Minimum and Maximum Build version.This makes patch to work between the mentioned Build versions.<br>
   		In order to skip this section please mention <b>' 0 '</b> values in both fields.
   	</small>
   </p>
@@ -57,7 +58,7 @@
 
   <!--Add Packages-->
   <p>Adding Files and Packages
-    <br><small>List all the URL's of Files and Packages to be added. Use semicolon ' ; ' as a seprator.<br>Prefixes : <b>boot, core, basic, apps, data, root and tmp</b>.</small></p>
+    <br><small>List all the URL's of Files and Packages to be added. Use semicolon ' ; ' as a seprator.<br>Prefixes : <b>boot-, core-, basic-, apps-, data-, root- and tmp-</b>.</small></p>
   <div class="form-group row">
     <div class="col-sm-10">
       {{form.add(class="form-control",placeholder='Example : apps-http://192.168.0.188/abc.sq;boot-http://192.168.0.188/initramfs.igz')}}
@@ -66,7 +67,7 @@
 
  <!--Deleting Packages-->
  <p>Remove Files and Packages
-  <br><small>List all the Files and Packages to be removed. Use colon ' : ' as a seprator.<br>Prefixes : <b>boot, core, basic, apps, data and root</b>.</small></p>
+  <br><small>List all the Files and Packages to be removed. Use colon ' : ' as a seprator.<br>Prefixes : <b>boot-, core-, basic-, apps-, data- and root-</b>.</small></p>
   <div class="form-group row">
     <div class="col-sm-10">
       {{form.remove(class="form-control",placeholder='Example : apps-abc.sq:boot-kernel')}}
