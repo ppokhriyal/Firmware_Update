@@ -95,13 +95,8 @@ def build_new_patch():
 	
 	if form.validate_on_submit():
 
-		#Check if Add/Remove Package and Files field is empty
-		if len(form.add.data) == 0 and len(form.remove.data) == 0:
-			flash(f'Add and Remove field can"t be empty','danger')
-			return redirect(url_for('home'))
-		
-		#Get the list of packages and files to be added
-		#If there is no packages and files to added,create a empty file
+		#Get the list of packages and files needed to be added
+		#If no packages and files need,create a empty file
 		add_pkg_file = form.add.data
 		add_pkg_file_list = []
 
@@ -111,24 +106,23 @@ def build_new_patch():
 			add_pkg_file_list = add_pkg_file.split(';')
 
 			for addloop in add_pkg_file_list:
-
-				#Check if Prefix is not matched
+				#Check for Prefix
 				prefix = addloop.split('-',1)
 
 				if prefix[0].casefold() not in ['boot','core','apps','basic','data','root','tmp']:
-					flash(f'Missing Prefix in {prefix[0]},while adding package','danger')
+					flash(f'Missing Prefix in {prefix[0]},while adding packages','danger')
 					return redirect(url_for('home'))
 
-				#Check if the URL is Live
+				#Check if URL is Live
 				try:
 					http = urllib3.PoolManager()
 					check_url = http.request('GET',prefix[1])
 
 					if check_url.status == 200:
-						print("URL IS LIVE and We are Downloading")
+						print('URL IS LIVE')
 						pkgname = prefix[1].split('/')[::-1]
 
-						#Check for Add packages
+						#Check for Add Packages
 						if prefix[0].casefold() == 'boot':
 							wget.download(url=prefix[1],out=patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg/boot:'+pkgname[0])
 						elif prefix[0].casefold() == 'core':
@@ -143,16 +137,15 @@ def build_new_patch():
 							wget.download(url=prefix[1],out=patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg/root:'+pkgname[0])
 						else:
 							wget.download(url=prefix[1],out=patchpath+str(patchid)+'/tmp/'+pkgname[0])
-
 					else:
-						flash(f'Invalid URL :{prefix[1]}','danger')
+						flash(f'Invalid URL : {prefix[1]}','danger')
 						return redirect(url_for('home'))
 				except Exception as e:
-					print(str(e))
-					flash(f'Invalid URL :{prefix[1]}','danger')
+					flash(f'Invalid URL : {prefix[1]}','danger')
 					return redirect(url_for('home'))
-		#Get the list of packages and files to be added
-		#If there is no packages and files to added,create a empty file
+
+		#Get the list of packages and files to be removed
+		#If there is no packages and files to be removed,create empty file
 		remove_pkg_file = form.remove.data
 		remove_pkg_file_list = []
 
@@ -162,10 +155,10 @@ def build_new_patch():
 			remove_pkg_file_list = remove_pkg_file.split(':')
 
 			for removeloop in remove_pkg_file_list:
-				#Check if Prefix is not matched
+				#Check for Prefix
 				prefix = removeloop.split('-',1)
 
-				if prefix[0].casefold() not in ['boot','core','apps','basic','data','root','tmp']:
+				if prefix[0].casefold() not in ['boot','core','apps','basic','data','root']:
 					flash(f'Missing Prefix in {prefix[0]},while removing package','danger')
 					return redirect(url_for('home'))
 
@@ -175,39 +168,42 @@ def build_new_patch():
 					Path(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg/'+'core:'+prefix[1]).touch()
 				elif prefix[0].casefold() == 'basic':
 					Path(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg/'+'basic:'+prefix[1]).touch()
-				elif prefix[0].casefold() == "apps":
+				elif prefix[0].casefold() == 'apps':
 					Path(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg/'+'apps:'+prefix[1]).touch()
-				elif prefix[0].casefold() == "data":
+				elif prefix[0].casefold() == 'data':
 					Path(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg/'+'data:'+prefix[1]).touch()
-				else :
+				else:
 					Path(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg/'+'root:'+prefix[1]).touch()
 
-		
-		#Findminmax Script
-		#Check for OS-Arch,Minimum-Maximum build,Check Update Build and Package Size
-		#OS-Arch
-		os_arch = form.os_type.data
+		#Check if Add-pkg and Remove-Pkg field is empty
+		if len(form.add.data) == 0 and len(form.remove.data) == 0:
+			flash(f'Add and Remove field can"t be empty','danger')
+			return redirect(url_for('home'))
 
-		#Minimum-Max Value
+		#Check if FindMim-Max script need to be created
 		min_value = form.min_img_build.data
 		max_value = form.max_img_build.data
 
-		if min_value > max_value:
-			flash(f'Minimum Build {min_image_value} not validating Maximum Build {max_image_value}','danger')
-			return redirect(url_for('home'))
+		if min_value != 0 and max_value != 0:
+			#Check if min_value > max_value
+			if min_value > max_value:
+				flash(f'Minimum Build {min_image_value} not validating Maximum Build {max_image_value}','danger')
+				return redirect(url_for('home'))
+			else:
+				#OS-Arch
+				os_arch = form.os_type.data
+				#Total size of packages to be added
+				os.chdir(patchpath+str(patchid)+"/sda1/data/firmware_update/add-pkg")
+				cmd = "du -schBM * | tail -n1 | awk -F' ' '{print $1}'"
+				proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+				o = proc.communicate()
+				add_pkg_size = o[0].decode('utf8').replace("\n","")
 
-		#Get the total size of packages to be added
-		os.chdir(patchpath+str(patchid)+"/sda1/data/firmware_update/add-pkg")
-		cmd = "du -schBM * | tail -n1 | awk -F' ' '{print $1}'"
-		proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-		o = proc.communicate()
-		add_pkg_size = o[0].decode('utf8').replace("\n","")
-
-		#Start writing findminmax script
-		f = open(patchpath+str(patchid)+'/root/findminmax',"x")
-		f.write(f"""#!/bin/bash\n\n
+				#Start writing findminmax script
+				f = open(patchpath+str(patchid)+'/root/findminmax',"x")
+				f.write(f"""#!/bin/bash\n\n
 mount -o remount,rw /sda1\n
-#Check for OS-ARCH
+#Check for OS-Arch
 os_arch_type = `file /usr/verixo-bin/OS_Desktop`
 echo $os_arch_type | grep -i "ELF 32-bit LSB executable"
 status=$?
@@ -225,11 +221,11 @@ then
 else
 	if [ {os_arch} -ne "$os_arch_type" ]
 	then
-		exit
+		exit 1
 	fi
 fi
 
-#Check for Min/Max value
+#Check Min/Max value
 /usr/verixo-bin/verify-patch.sh {min_value} {max_value}
 status=$?
 if [ $status -ne 0 ]
@@ -237,18 +233,17 @@ then
 	exit 1
 fi
 
-#Check for Update Build
+#CHeck for Update Build
 if [ -f /sda1/data/firmware_update/add-pkg/basic:verixo-bin.sq ]
 then
 	mkdir /opt/demoloop
 	mount -o loop /sda1/data/firmware_update/add-pkg/basic:verixo-bin.sq /opt/demoloop/
-	build=`cat /opt/demoloop/usr/verixo-bin/.updatebuild`
+	build=`cat /opt/demoloop/usr/verixo-bin/.updatebuild
 	umount /opt/demoloop
 	rm -rf /opt/demoloop
 
 	/usr/verixo-bin/Firmwareupdate --checkupdatebuild $build
 	status=$?
-
 	if [ $status -ne 0 ]
 	then
 		exit 1
@@ -258,55 +253,52 @@ fi
 #Available Space left for Package to be added
 /usr/verixo-bin/Firmwareupdate --checksize {add_pkg_size}
 status=$?
-
 if [ $status -ne 0 ]
 then
 	exit 1
 fi
 
-#All Good to Go
+#All Good
 exit 0
-
+	
 """)
-		f.close()
-		#Start writing Install script
-		install_script = form.install_script.data
-		install_script_list = []
+				f.close()
+				#Start writting install script
+				install_script = form.install_script.data
+				install_script_list = []
+				if len(install_script) != 0:
+					install_script_list = install_script.split(' ')
+					f = open(patchpath+str(patchid)+'/root/install',"a+")
+					f.write("#!/bin/bash\n")
+					for i in " ".join(install_script_list):
+						f.write(i)
+					f.close()
 
-		if len(install_script) != 0:
-			install_script_list = install_script.split(' ')
-			f = open(patchpath+str(patchid)+'/root/install',"a+")
-			f.write("#!/bin/bash\n")
-			for i in " ".join(install_script_list):
-				f.write(i)
-			f.close()
+					#Remove ^M from install script
+					subprocess.call(["sed -i -e 's/\r//g' /var/www/html/Firmware-Updates/"+str(patchid)+"/root/install"],shell=True)
 
-			#Remove ^M from install script
-			subprocess.call(["sed -i -e 's/\r//g' /var/www/html/Firmware-Updates/"+str(patchid)+"/root/install"],shell=True)
+				#Check if add-pkg or delete-pkg folders contains empty
+				if os.path.isfile(patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg/empty'):
+					shutil.rmtree(patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg')
 
-		#Pre-Check Patch
-		#Check if add-pkg or delete-pkg folders contains empty
-		if os.path.isfile(patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg/empty'):
-			shutil.rmtree(patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg')
+				if os.path.isfile(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg/empty'):
+					shutil.rmtree(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg-pkg')
 
-		if os.path.isfile(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg/empty'):
-			shutil.rmtree(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg-pkg')
+				#CHMOD
+				subprocess.call(["chmod -R 755 /var/www/html/Firmware-Updates/"+str(patchid)],shell=True)
 
-		#Chmod
-		subprocess.call(["chmod -R 755 /var/www/html/Firmware-Updates/"+str(patchid)],shell=True)
+				#Build Final Patch Tar
+				patchname = form.patch_name.data.replace(' ','_')+'_'+str(patchid)+'.tar.bz2'
+				tar_file_path = patchpath+str(patchid)+'/'+patchname
+				tar = tarfile.open(tar_file_path,mode='w:bz2')
+				os.chdir(patchpath+str(patchid))
+				tar.add(".")
+				tar.close()
 
-		#Build Final Patch Tar
-		patchname = form.patch_name.data.replace(' ','_')+'_'+str(patchid)+'.tar.bz2'
-		tar_file_path = patchpath+str(patchid)+'/'+patchname
-		tar = tarfile.open(tar_file_path,mode='w:bz2')
-		os.chdir(patchpath+str(patchid))
-		tar.add(".")
-		tar.close()
-
-		#Damage Patch
-		cmd = "damage corrupt /var/www/html/Firmware-Updates/"+str(patchid)+'/'+patchname+" 1"
-		proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-		o,e = proc.communicate()
+				#Damage Patch
+				cmd = "damage corrupt /var/www/html/Firmware-Updates/"+str(patchid)+'/'+patchname+" 1"
+				proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+				o,e = proc.communicate()
 
 		return redirect(url_for('home'))
 	return render_template('build_new_patch.html',title='Build New Patch',form=form,patchid=patchid)

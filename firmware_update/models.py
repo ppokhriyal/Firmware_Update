@@ -27,9 +27,6 @@ class PatchInfo(db.Model):
         max_img_ver = db.Column(db.Integer)
         min_img_ver = db.Column(db.Integer)
         os_arch = db.Column(db.Text,nullable=False)
-        remove = db.Column(db.Text)
-        add = db.Column(db.Text)
-        install = db.Column(db.Text)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
         def __repr__(self):
