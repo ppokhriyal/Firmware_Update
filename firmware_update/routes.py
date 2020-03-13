@@ -20,10 +20,12 @@ import tarfile
 @app.route('/home')
 @login_required
 def home():
+
 	#Check the Length of patchinfo db
 	patch_count = len(db.session.query(PatchInfo).all())
-
-	return render_template('home.html',title="Home",patch_count=patch_count)
+	page = request.args.get('page',1,type=int)
+	patch = PatchInfo.query.filter_by(author=current_user).order_by(PatchInfo.date_posted.desc()).paginate(page=page,per_page=4)
+	return render_template('home.html',title="Home",patch_count=patch_count,patch=patch)
 
 #Login Page
 @app.route('/',methods=['GET','POST'])
@@ -69,7 +71,7 @@ def send_mail(patchgenid,author,patchname,description,pmd5sum):
 	patch_md5sum = pmd5sum
 	body_msg = f'''"Hello All,
 Please find the below details of Fimware Update Patch :\n
-URL          	 : {patch_url}
+URL          	    : {patch_url}
 Md5sum          : {patch_md5sum}
 Description      :
 {description}\n\n
@@ -209,7 +211,7 @@ def build_new_patch():
 		min_value = form.min_img_build.data
 		max_value = form.max_img_build.data
 
-		if min_value != "01" and max_value != "01":
+		if min_value != 1 and max_value != 1:
 			#Check if min_value > max_value
 			if min_value > max_value:
 				flash(f'Minimum Build {min_image_value} not validating Maximum Build {max_image_value}','danger')
@@ -339,7 +341,7 @@ exit 0
 		send_mail(patchgenid=str(patchid),author=current_user,patchname=form.patch_name.data,description=form.patch_description.data,pmd5sum=patch_md5sum)
 
 		#Update DataBase
-		patch_update = PatchInfo(patchgenid=form.patch_id.data,author=current_user,patchname=form.patch_name.data,description=" ".join(form.patch_description.data),os_arch=form.os_type.data)
+		patch_update = PatchInfo(patchgenid=form.patch_id.data,author=current_user,patchname=form.patch_name.data,description=form.patch_description.data,os_arch=form.os_type.data,md5sum=patch_md5sum)
 		db.session.add(patch_update)
 		db.session.commit()
 

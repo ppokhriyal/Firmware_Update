@@ -27,6 +27,7 @@ class PatchInfo(db.Model):
         description = db.Column(db.Text,nullable=False)
         max_img_ver = db.Column(db.Integer)
         min_img_ver = db.Column(db.Integer)
+        md5sum = db.Column(db.String(50),nullable=False)
         os_arch = db.Column(db.Text,nullable=False)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 

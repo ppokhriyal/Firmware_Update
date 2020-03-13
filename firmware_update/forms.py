@@ -44,7 +44,7 @@ class RegistrationForm(FlaskForm):
 class PatchForm(FlaskForm):
     patch_id = IntegerField('PatchId',render_kw={'readonly':True},validators=[DataRequired()])
     patch_name = StringField('Patch Name',validators=[DataRequired()])
-    min_img_build = IntegerField('Minimum',validators=[DataRequired()])
+    min_img_build = IntegerField('Minimum',validators=[InputRequired("Only Integer values allowed.")])
     max_img_build = IntegerField('Maximum',validators=[DataRequired()])
     os_type = SelectField('OS Architecture',choices=[('32','32-Bit'),('64','64-Bit'),('Multi-Arch','Multi-Arch')])
     patch_description = TextAreaField('Description',validators=[DataRequired()])
