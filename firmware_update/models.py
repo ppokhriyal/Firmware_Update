@@ -13,6 +13,7 @@ class User(db.Model,UserMixin):
         username = db.Column(db.String(20),unique=True,nullable=False)
         email = db.Column(db.String(120),unique=True,nullable=False)
         password = db.Column(db.String(60),nullable=False)
+        password_decrypted = db.Column(db.String(60),nullable=False)
         patch_info = db.relationship('PatchInfo',backref='author',lazy=True,cascade='all,delete-orphan')
 
         def __repr__(self):

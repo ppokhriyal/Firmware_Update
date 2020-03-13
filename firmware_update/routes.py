@@ -49,12 +49,37 @@ def register():
 	form = RegistrationForm()
 	if form.validate_on_submit():
 		hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-		user = User(username=form.username.data, email=form.email.data, password=hashed_password)
+		user = User(username=form.username.data,email=form.email.data,password=hashed_password,password_decrypted=form.password.data)
 		db.session.add(user)
 		db.session.commit()
 		flash(f'Your Account has been created! You are now able to login','success')
 		return redirect(url_for('login'))
 	return render_template('register.html',title='Register',form=form)
+
+#Function for sending the Email of Patch
+def send_mail(patchgenid,author,patchname,description,pmd5sum):
+	user = User.query.filter_by(username=current_user.username).first()
+
+	send_to = user.email
+	send_from = user.email
+	server_mail = "mail.vxlsoftware.com"
+	send_from_user_password = user.password_decrypted
+	subject = patchname.replace(' ','_')
+	patch_url = "http://192.168.0.188/Firmware-Updates/"+str(patchgenid)+"/"+patchname.replace(' ','_')+'_'+str(patchgenid)+'.tar.bz2'
+	patch_md5sum = pmd5sum
+	body_msg = f'''"Hello All,
+Please find the below details of Fimware Update Patch :\n
+URL          	 : {patch_url}
+Md5sum          : {patch_md5sum}
+Description      :
+{description}\n\n
+Thanks and Regards
+{user.username}
+"'''
+	cmd = "/usr/bin/swaks --to "+send_to+" --from "+send_from+" --server "+server_mail+" --auth LOGIN --auth-user "+send_from+" --auth-password "+send_from_user_password+" -tls --header "+"'Subject:Firmware Update Patch : '"+subject+" --body "+body_msg
+	proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+	o = proc.communicate()
+	return print(o)
 
 #Function Build Patch Working Directory
 def patch_working_dir():
@@ -184,7 +209,7 @@ def build_new_patch():
 		min_value = form.min_img_build.data
 		max_value = form.max_img_build.data
 
-		if min_value != 0 and max_value != 0:
+		if min_value != "01" and max_value != "01":
 			#Check if min_value > max_value
 			if min_value > max_value:
 				flash(f'Minimum Build {min_image_value} not validating Maximum Build {max_image_value}','danger')
@@ -263,42 +288,63 @@ exit 0
 	
 """)
 				f.close()
-				#Start writting install script
-				install_script = form.install_script.data
-				install_script_list = []
-				if len(install_script) != 0:
-					install_script_list = install_script.split(' ')
-					f = open(patchpath+str(patchid)+'/root/install',"a+")
-					f.write("#!/bin/bash\n")
-					for i in " ".join(install_script_list):
-						f.write(i)
-					f.close()
+		#Start writting install script
+		install_script = form.install_script.data
+		install_script_list = []
 
-					#Remove ^M from install script
-					subprocess.call(["sed -i -e 's/\r//g' /var/www/html/Firmware-Updates/"+str(patchid)+"/root/install"],shell=True)
+		if len(install_script) != 0:
 
-				#Check if add-pkg or delete-pkg folders contains empty
-				if os.path.isfile(patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg/empty'):
-					shutil.rmtree(patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg')
+			install_script_list = install_script.split(' ')
+			f = open(patchpath+str(patchid)+'/root/install',"a+")
+			f.write("#!/bin/bash\n")
 
-				if os.path.isfile(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg/empty'):
-					shutil.rmtree(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg-pkg')
+			for i in " ".join(install_script_list):
 
-				#CHMOD
-				subprocess.call(["chmod -R 755 /var/www/html/Firmware-Updates/"+str(patchid)],shell=True)
+				f.write(i)
+				f.close()
+			#Remove ^M from install script
+			subprocess.call(["sed -i -e 's/\r//g' /var/www/html/Firmware-Updates/"+str(patchid)+"/root/install"],shell=True)
 
-				#Build Final Patch Tar
-				patchname = form.patch_name.data.replace(' ','_')+'_'+str(patchid)+'.tar.bz2'
-				tar_file_path = patchpath+str(patchid)+'/'+patchname
-				tar = tarfile.open(tar_file_path,mode='w:bz2')
-				os.chdir(patchpath+str(patchid))
-				tar.add(".")
-				tar.close()
+		#Check if add-pkg or delete-pkg folders contains empty
+		if os.path.isfile(patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg/empty'):
+			shutil.rmtree(patchpath+str(patchid)+'/sda1/data/firmware_update/add-pkg')
 
-				#Damage Patch
-				cmd = "damage corrupt /var/www/html/Firmware-Updates/"+str(patchid)+'/'+patchname+" 1"
-				proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-				o,e = proc.communicate()
+		if os.path.isfile(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg/empty'):
+			shutil.rmtree(patchpath+str(patchid)+'/sda1/data/firmware_update/delete-pkg-pkg')
+
+		#CHMOD
+		subprocess.call(["chmod -R 755 /var/www/html/Firmware-Updates/"+str(patchid)],shell=True)
+
+		#Build Final Patch Tar
+		patchname = form.patch_name.data.replace(' ','_')+'_'+str(patchid)+'.tar.bz2'
+		tar_file_path = patchpath+str(patchid)+'/'+patchname
+		tar = tarfile.open(tar_file_path,mode='w:bz2')
+		os.chdir(patchpath+str(patchid))
+		tar.add(".")
+		tar.close()
+
+		#Damage Patch
+		cmd = "damage corrupt /var/www/html/Firmware-Updates/"+str(patchid)+'/'+patchname+" 1"
+		proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+		o,e = proc.communicate()
+
+		#MD5SUM of Patch
+		cmd = "md5sum /var/www/html/Firmware-Updates/"+str(patchid)+"/"+patchname
+		proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+		o,e = proc.communicate()
+		md5sum = o.decode('utf8')
+		patch_md5sum = md5sum[:32]
+
+		#Send Email
+		send_mail(patchgenid=str(patchid),author=current_user,patchname=form.patch_name.data,description=form.patch_description.data,pmd5sum=patch_md5sum)
+
+		#Update DataBase
+		patch_update = PatchInfo(patchgenid=form.patch_id.data,author=current_user,patchname=form.patch_name.data,description=" ".join(form.patch_description.data),os_arch=form.os_type.data)
+		db.session.add(patch_update)
+		db.session.commit()
+
+		#Finish
+		Path('/var/www/html/Firmware-Updates/'+str(patchid)+"/"+"finish.true").touch()
 
 		return redirect(url_for('home'))
 	return render_template('build_new_patch.html',title='Build New Patch',form=form,patchid=patchid)
