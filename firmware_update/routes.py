@@ -62,12 +62,12 @@ def register():
 def send_mail(patchgenid,author,patchname,description,pmd5sum):
 	user = User.query.filter_by(username=current_user.username).first()
 
-	send_to = user.email
+	send_to = "mail.vxlsoftware.com"
 	send_from = user.email
 	server_mail = "mail.vxlsoftware.com"
 	send_from_user_password = user.password_decrypted
 	subject = patchname.replace(' ','_')
-	patch_url = "http://192.168.0.188/Firmware-Updates/"+str(patchgenid)+"/"+patchname.replace(' ','_')+'_'+str(patchgenid)+'.tar.bz2'
+	patch_url = "http://192.168.2.240/Firmware-Updates/"+str(patchgenid)+"/"+patchname.replace(' ','_')+'_'+str(patchgenid)+'.tar.bz2'
 	patch_md5sum = pmd5sum
 	body_msg = f'''"Hello All,
 Please find the below details of Fimware Update Patch :\n
